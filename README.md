@@ -50,3 +50,6 @@ curl https://raw.githubusercontent.com/Dynatrace/easyTravel-Docker/refs/heads/ma
 curl https://raw.githubusercontent.com/Dynatrace/easyTravel-Docker/refs/heads/master/kubernetes-manifests/mongodb.yml | kubectl apply -f -
 curl https://raw.githubusercontent.com/Dynatrace/easyTravel-Docker/refs/heads/master/kubernetes-manifests/nginx.yml | kubectl apply -f -
 ```
+
+## Installation of Telemetry Collectors
+TBD
