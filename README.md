@@ -52,4 +52,88 @@ curl https://raw.githubusercontent.com/Dynatrace/easyTravel-Docker/refs/heads/ma
 ```
 
 ## Installation of Telemetry Collectors
-TBD
+
+### Setting up Grafana Cloud Kubernetes Monitoring
+
+The Grafana Kubernetes Monitoring solution provides comprehensive monitoring for Kubernetes clusters by collecting metrics, logs, traces, and profiles using Grafana Agent. Follow these steps to set up monitoring with Grafana Cloud:
+
+#### 1. Prerequisites
+- A Grafana Cloud account and API keys for:
+  - Metrics (Prometheus)
+  - Logs (Loki)
+  - Traces (Tempo)
+  - Profiles (Pyroscope)
+
+#### 2. Update Configuration File
+Edit the `chart/grafana-chart-values.yaml` file to update your Grafana Cloud-specific credentials:
+
+- Replace all empty `password` values with your respective API keys
+- Update the URLs if needed (based on your Grafana Cloud instance region)
+- Update the `cluster.name` value to match your cluster name
+
+```yaml
+cluster:
+  name: my-cluster  # Change to your cluster name
+destinations:
+  - name: grafana-cloud-metrics
+    type: prometheus
+    url: https://prometheus-prod-XX-prod-eu-west-2.grafana.net/api/prom/push
+    auth:
+      password: "your-prometheus-api-key"  # Add your API key
+  
+  - name: grafana-cloud-logs
+    type: loki
+    url: https://logs-prod-XXX.grafana.net/loki/api/v1/push
+    auth:
+      password: "your-loki-api-key"  # Add your API key
+  
+  - name: grafana-cloud-traces
+    type: otlp
+    url: https://tempo-prod-XX-prod-eu-west-2.grafana.net:443
+    auth:
+      password: "your-tempo-api-key"  # Add your API key
+  
+  - name: grafana-cloud-profiles
+    type: pyroscope
+    url: https://profiles-prod-XXX.grafana.net:443
+    auth:
+      password: "your-pyroscope-api-key"  # Add your API key
+```
+
+#### 3. Add the Grafana Helm Repository
+```bash
+helm repo add grafana https://grafana.github.io/helm-charts
+helm repo update
+```
+
+#### 4. Install the Grafana Kubernetes Monitoring Chart
+```bash
+helm upgrade --install k8s-monitoring grafana/k8s-monitoring \
+  --namespace monitoring \
+  --create-namespace \
+  -f chart/grafana-chart-values.yaml
+```
+
+#### 5. Verify the Installation
+```bash
+kubectl get pods -n monitoring
+```
+
+#### 6. Access Your Metrics in Grafana Cloud
+Once installed, your cluster's metrics, logs, traces, and profiles will be available in your Grafana Cloud instance. You can access them through:
+- Grafana Dashboard: Browse the Kubernetes dashboards in your Grafana Cloud instance
+- Explore: Use Explore to query your metrics, logs, traces, and profiles
+
+#### 7. Features Enabled
+The configuration enables:
+- Cluster metrics collection (including OpenCost)
+- Kubernetes events
+- Pod logs
+- Application observability (OTLP receivers for traces)
+- Auto-instrumentation
+- Profiling
+- Annotation autodiscovery
+
+For more information on customizing your setup, refer to the [Grafana Kubernetes Monitoring documentation](https://grafana.com/docs/grafana-cloud/kubernetes-monitoring/).
+
+### TODO: Add Dynatrace configuration to the values file
