@@ -1,6 +1,6 @@
 
 cluster:
-  name: my-cluster
+  name: mastering-obs
 destinations:
   # Grafana Cloud
   - name: grafana-cloud-metrics
@@ -8,14 +8,14 @@ destinations:
     url: https://prometheus-prod-24-prod-eu-west-2.grafana.net/api/prom/push
     auth:
       type: basic
-      username: "2337275"
+      username: ""
       password: ""
   - name: grafana-cloud-logs
     type: loki
     url: https://logs-prod-012.grafana.net/loki/api/v1/push
     auth:
       type: basic
-      username: "1164315"
+      username: ""
       password: ""
   - name: grafana-cloud-traces
     type: otlp
@@ -23,7 +23,7 @@ destinations:
     protocol: grpc
     auth:
       type: basic
-      username: "1158629"
+      username: ""
       password: ""
     metrics:
       enabled: false
@@ -36,30 +36,71 @@ destinations:
     url: https://profiles-prod-002.grafana.net:443
     auth:
       type: basic
-      username: "1206516"
+      username: ""
       password: ""
+  
 clusterMetrics:
   enabled: true
+  #destinations: [dynatrace]
   opencost:
-    enabled: true
-    metricsSource: grafana-cloud-metrics
-    opencost:
-      exporter:
-        defaultClusterId: mastering-obs-demo
-      prometheus:
-        existingSecretName: grafana-cloud-metrics-grafana-k8s-monitoring
-        external:
-          url: https://prometheus-prod-24-prod-eu-west-2.grafana.net/api/prom
+    enabled: false
   kepler:
-    enabled: true
+    enabled: false
 annotationAutodiscovery:
   enabled: true
+  #destinations: [dynatrace]
+
 clusterEvents:
   enabled: true
+  #destinations: [dynatrace]
+
 podLogs:
   enabled: true
+  #destinations: [dynatrace]
+  gatherMethod: kubernetesApi
+  labelsToKeep:
+  - app.kubernetes.io/name
+  - container
+  - k8s.container.name
+  - k8s.node.name
+  - instance
+  - job
+  - level
+  - namespace
+  - pod
+  - service.name
+  - service.namespace
+  - deployment.environment
+  - deployment.environment.name
+  - k8s.pod.name
+  - k8s.pod.uid
+  - k8s.namespace.name
+  - k8s.cluster.name
+  - k8s.cluster.uid
+  - k8s.deployment.name
+  - k8s.statefulset.name
+  - k8s.daemonset.name
+  - k8s.cronjob.name
+  - k8s.job.name
+  - k8s.node.name
+  - k8s.workload.kind
+  - k8s.workload.name
+  - dt.entity.kubernetes_cluster
+  - dt.kubernetes.cluster.id
+  - dt.kubernetes.workload.kind
+  - dt.kubernetes.workload.name
+  - process.technology
+  annotations:
+    k8s_workload_kind: "metadata.dynatrace.com/k8s.workload.kind"
+    k8s_workload_name: "metadata.dynatrace.com/k8s.workload.name"
+    process_technology: "metadata.dynatrace.com/process.technology"
+  #excludeNamespaces:
+  #- otel-demo
+  
+
 applicationObservability:
   enabled: true
+  #destinations: [dynatrace]
   receivers:
     otlp:
       grpc:
@@ -72,10 +113,157 @@ applicationObservability:
       enabled: true
       port: 9411
   connectors:
-    grafanaCloudMetrics:
+    spanMetrics:
       enabled: true
+
+  processors:
+    k8sattributes:
+      # -- Kubernetes metadata to extract and add to the attributes of the received telemetry data.
+      # @section -- Processors: K8s Attributes
+      metadata:
+          - k8s.pod.name
+          - k8s.pod.uid
+          - k8s.pod.ip
+          - k8s.deployment.name
+          - k8s.replicaset.name
+          - k8s.statefulset.name
+          - k8s.daemonset.name
+          - k8s.job.name
+          - k8s.cronjob.name
+          - k8s.namespace.name
+          - k8s.node.name
+          - k8s.cluster.uid
+      annotations:
+        - from: pod
+          key_regex: metadata.dynatrace.com/(.*)
+          tag_name: $$1
+
+  metrics:
+    enabled: true
+    transforms:
+      resource:
+            - set(attributes["k8s.workload.kind"], "job") where IsString(attributes["k8s.job.name"])
+            - set(attributes["k8s.workload.name"], attributes["k8s.job.name"]) where IsString(attributes["k8s.job.name"])
+            - set(attributes["k8s.workload.kind"], "cronjob") where IsString(attributes["k8s.cronjob.name"])
+            - set(attributes["k8s.workload.name"], attributes["k8s.cronjob.name"]) where IsString(attributes["k8s.cronjob.name"])
+            - set(attributes["k8s.workload.kind"], "daemonset") where IsString(attributes["k8s.daemonset.name"])
+            - set(attributes["k8s.workload.name"], attributes["k8s.daemonset.name"]) where IsString(attributes["k8s.daemonset.name"])
+            - set(attributes["k8s.workload.kind"], "statefulset") where IsString(attributes["k8s.statefulset.name"])
+            - set(attributes["k8s.workload.name"], attributes["k8s.statefulset.name"]) where IsString(attributes["k8s.statefulset.name"])
+            - set(attributes["k8s.workload.kind"], "replicaset") where IsString(attributes["k8s.replicaset.name"])
+            - set(attributes["k8s.workload.name"], attributes["k8s.replicaset.name"]) where IsString(attributes["k8s.replicaset.name"])
+            - set(attributes["k8s.workload.kind"], "deployment") where IsString(attributes["k8s.deployment.name"])
+            - set(attributes["k8s.workload.name"], attributes["k8s.deployment.name"]) where IsString(attributes["k8s.deployment.name"])
+
+  logs:
+    enabled: true
+    transforms:
+      resource:
+            - set(attributes["k8s.workload.kind"], "job") where IsString(attributes["k8s.job.name"])
+            - set(attributes["k8s.workload.name"], attributes["k8s.job.name"]) where IsString(attributes["k8s.job.name"])
+            - set(attributes["k8s.workload.kind"], "cronjob") where IsString(attributes["k8s.cronjob.name"])
+            - set(attributes["k8s.workload.name"], attributes["k8s.cronjob.name"]) where IsString(attributes["k8s.cronjob.name"])
+            - set(attributes["k8s.workload.kind"], "daemonset") where IsString(attributes["k8s.daemonset.name"])
+            - set(attributes["k8s.workload.name"], attributes["k8s.daemonset.name"]) where IsString(attributes["k8s.daemonset.name"])
+            - set(attributes["k8s.workload.kind"], "statefulset") where IsString(attributes["k8s.statefulset.name"])
+            - set(attributes["k8s.workload.name"], attributes["k8s.statefulset.name"]) where IsString(attributes["k8s.statefulset.name"])
+            - set(attributes["k8s.workload.kind"], "replicaset") where IsString(attributes["k8s.replicaset.name"])
+            - set(attributes["k8s.workload.name"], attributes["k8s.replicaset.name"]) where IsString(attributes["k8s.replicaset.name"])
+            - set(attributes["k8s.workload.kind"], "deployment") where IsString(attributes["k8s.deployment.name"])
+            - set(attributes["k8s.workload.name"], attributes["k8s.deployment.name"]) where IsString(attributes["k8s.deployment.name"])
+
+  traces:
+    enabled: true
+    transforms:
+      resource:
+            - set(attributes["k8s.workload.kind"], "job") where IsString(attributes["k8s.job.name"])
+            - set(attributes["k8s.workload.name"], attributes["k8s.job.name"]) where IsString(attributes["k8s.job.name"])
+            - set(attributes["k8s.workload.kind"], "cronjob") where IsString(attributes["k8s.cronjob.name"])
+            - set(attributes["k8s.workload.name"], attributes["k8s.cronjob.name"]) where IsString(attributes["k8s.cronjob.name"])
+            - set(attributes["k8s.workload.kind"], "daemonset") where IsString(attributes["k8s.daemonset.name"])
+            - set(attributes["k8s.workload.name"], attributes["k8s.daemonset.name"]) where IsString(attributes["k8s.daemonset.name"])
+            - set(attributes["k8s.workload.kind"], "statefulset") where IsString(attributes["k8s.statefulset.name"])
+            - set(attributes["k8s.workload.name"], attributes["k8s.statefulset.name"]) where IsString(attributes["k8s.statefulset.name"])
+            - set(attributes["k8s.workload.kind"], "replicaset") where IsString(attributes["k8s.replicaset.name"])
+            - set(attributes["k8s.workload.name"], attributes["k8s.replicaset.name"]) where IsString(attributes["k8s.replicaset.name"])
+            - set(attributes["k8s.workload.kind"], "deployment") where IsString(attributes["k8s.deployment.name"])
+            - set(attributes["k8s.workload.name"], attributes["k8s.deployment.name"]) where IsString(attributes["k8s.deployment.name"])
+      # span:
+      #   - replace_pattern(name, "\\?.*", "")
+      #   - replace_match(name, "GET /api/products/*", "GET /api/products/{productId}")
+
 autoInstrumentation:
+  
   enabled: true
+  #destinations: [dynatrace]
+
+  beyla:
+    k8sCache:
+      replicas: 0
+    image:
+      tag: "2.2.3"
+    extraCapabilities:
+      - NET_ADMIN           # <-- Important. Allows Beyla to inject HTTP and TCP context propagation information.
+    volumes:
+      - name: cgroup
+        hostPath:
+          path: /sys/fs/cgroup
+    volumeMounts:
+    
+      - name: cgroup
+        mountPath: /sys/fs/cgroup
+    service:
+      enabled: true
+      targetPort: 9090
+    config:
+      data:
+        ebpf:
+          context_propagation: "all"
+          #enable_context_propagation: true
+          #heuristic_sql_detect: false
+          #track_request_headers: false
+        attributes:
+          kubernetes:
+            enable: true
+          select:
+            beyla_network_flow_bytes:
+              include:
+                # - k8s.cluster.name
+                # - k8s.dst.name
+                # - k8s.dst.namespace
+                # - k8s.dst.owner.name
+                # - k8s.dst.owner.type
+                # - k8s.src.name
+                # - k8s.src.namespace
+                # - k8s.src.owner.name
+                # - k8s.src.owner.type
+                - k8s.src.owner.name
+                - k8s.src.namespace
+                - k8s.dst.owner.name
+                - k8s.dst.namespace
+                - k8s.cluster.name
+        discovery:
+          exclude_otel_instrumented_services: false
+          services:
+            - k8s_deployment_name: "."
+              k8s_namespace: "easytrade"
+        network:
+          enable: true
+          print_flows: false
+        prometheus_export:
+          path: /metrics
+          features:
+            - application
+            - application_process
+            - application_service_graph
+            - application_span
+            - network
+        internal_metrics:
+          prometheus:
+            path: /internal/metrics
+            routes:
+        unmatched: heuristic
+  preset: application
 profiling:
   enabled: true
 integrations:
@@ -89,15 +277,31 @@ integrations:
             - alloy-logs
             - alloy-receiver
             - alloy-profiles
+
 alloy-metrics:
   enabled: true
 alloy-singleton:
   enabled: true
 alloy-logs:
   enabled: true
+  alloy:
+    stabilityLevel: public-preview
+
+    mounts:
+      dockercontainers: false
+      varlog: false
+    clustering:
+      enabled: true
 alloy-receiver:
   enabled: true
   alloy:
+    mounts:
+      varlog: true
+    securityContext:
+      privileged: true
+      runAsUser: 0
+      allowPrivilegeEscalation: true
+    stabilityLevel: public-preview
     extraPorts:
       - name: otlp-grpc
         port: 4317
@@ -113,3 +317,8 @@ alloy-receiver:
         protocol: TCP
 alloy-profiles:
   enabled: true
+
+alloy-operator:
+  deploy: false
+  crds:
+    deployAlloyCRD: false
